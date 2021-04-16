@@ -1,3 +1,6 @@
+# much of the a2c code is taken from 
+# https://towardsdatascience.com/understanding-actor-critic-methods-931b97b6df3f
+
 import sys
 
 sys.path.append('../')
