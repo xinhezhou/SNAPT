@@ -48,7 +48,7 @@ class Machine():
         if self.atts[3] == 0 or self.atts[0] != 2 : # if the device was not exploited in the previous turn
             return 0
         if np.random.random_sample() < detect_prob: # where does p_e come in?
-            self.atts[0] = max(0, self.atts[2] - 1) # reduce security state by 1 (more secure)
+            self.atts[0] = 1 # reduce security state from compromised to vulnerable
             return 1
         
         return 0
@@ -85,7 +85,7 @@ class Machine():
 class SNAPT_Game():
     def __init__(self, weights, machine_atts, p1_atts, p2_atts, goal = 1):
         
-        self.weights = weights
+        self.weights = weights # edges 
         self.p1 = Player(p1_atts)
         self.p2 = Player(p2_atts)
         self.machines = [Machine(m_atts) for m_atts in machine_atts]
@@ -146,14 +146,15 @@ class SNAPT_Game():
     
     def getValidMoves(self, board, player):
         if player == -1:
-            return ([0] * self.size) + ([1] * (2 * self.size))
+            return ([0] * self.size) + ([1] * (2 * self.size))  # p_e 
         
         p1, p2, machines = board
         access_mat = [[machine.state()] * self.size for machine in machines]
-        access_mat = np.array(access_mat) * np.array(self.weights)
+         # use matrix multiplication to find all vulnerable (and connected to vulnerable) devices 
+        access_mat = np.array(access_mat) * np.array(self.weights) # this is fishy...might need to transpose access_mat
         valids = list(np.sum(access_mat, axis = 0))
         valids = [v > 0 for v in valids]
-        return valids + ([0] * (2 * self.size))
+        return valids + ([0] * (2 * self.size)) 
     
     
     def getGameEnded(self, board, player):
