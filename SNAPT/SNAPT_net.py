@@ -16,6 +16,7 @@ import os
 
 
 class SNAPT_AC(nn.Module):
+
     def __init__(self, num_inputs, num_actions, hidden_size, learning_rate=1e-4):
         super(SNAPT_AC, self).__init__()
 
@@ -30,15 +31,12 @@ class SNAPT_AC(nn.Module):
         state = Variable(torch.from_numpy(state).float().unsqueeze(0))
 
         value = F.relu(self.critic_linear1(state))
-        value = self.critic_linear2(value)
+        value = torch.tanh(self.critic_linear2(value))
 
         policy_dist = F.relu(self.actor_linear1(state))
-        policy_dist = F.softmax(self.actor_linear2(policy_dist), dim=-1)
+        policy_dist = F.log_softmax(self.actor_linear2(policy_dist), dim=-1)
 
         return policy_dist, value
-    
-    def getActionProb(self, state):
-        return self.forward(state)[0]
     
     
      

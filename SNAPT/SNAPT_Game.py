@@ -107,35 +107,28 @@ class SNAPT_Game():
         result_dict = {0: 'failed', 1: 'success'}
         
         p1, p2, machines = copy.deepcopy(board)
-        action_type = action // self.size
         target = machines[action % self.size]
         
-        if action_type == 0:
+        if player == 1: # attack scenario
+            p1.spend_init()
             for m in machines:
                 m.reset()
-            result = target.attack()
+            result = machines[action % self.size].attack()
             
-            
-        elif action_type == 1:
-            result = target.detect()
-            
-        elif action_type == 2:
-            result = target.secure()
-            
+        elif player == -1: # defend scenario
+            p2.spend_init()
+            if action < 3:
+                result = machines[action % self.size].detect()
+            else:
+                result = target.secure()     
         else:
             print('bruh')
+
             
         if render:
             print('{} machine {}. Result: {}'.format(action_dict[action_type], action % self.size, result_dict[result]))
             
-        if player == 1:
-            p1.spend_init()
-            
-        elif player == -1:
-            p2.spend_init()
-            
-        else:
-            print('bruh')
+        
             
         return (p1, p2, machines), -player
             
@@ -146,15 +139,15 @@ class SNAPT_Game():
     
     def getValidMoves(self, board, player):
         if player == -1:
-            return ([0] * self.size) + ([1] * (2 * self.size))  # p_e 
+            return [1] * (2 * self.size)  # all options available to defenders
         
         p1, p2, machines = board
         access_mat = [[machine.state()] * self.size for machine in machines]
          # use matrix multiplication to find all vulnerable (and connected to vulnerable) devices 
-        access_mat = np.array(access_mat) * np.array(self.weights) # this is fishy...might need to transpose access_mat
+        access_mat = np.array(access_mat) * np.array(self.weights) 
         valids = list(np.sum(access_mat, axis = 0))
-        valids = [v > 0 for v in valids]
-        return valids + ([0] * (2 * self.size)) 
+        valids = [v > 0 for v in valids] # find the ones that can be attacked
+        return valids
     
     
     def getGameEnded(self, board, player):

@@ -4,7 +4,6 @@ class NeuralNet():
     network, subclass this class and implement the functions below. The neural
     network does not consider the current player, and instead only deals with
     the canonical form of the board.
-
     See othello/NNet.py for an example implementation.
     """
 
@@ -15,7 +14,6 @@ class NeuralNet():
         """
         This function trains the neural network with examples obtained from
         self-play.
-
         Input:
             examples: a list of training examples, where each example is of form
                       (board, pi, v). pi is the MCTS informed policy vector for
@@ -28,7 +26,6 @@ class NeuralNet():
         """
         Input:
             board: current board in its canonical form.
-
         Returns:
             pi: a policy vector for the current board- a numpy array of length
                 game.getActionSize
@@ -48,4 +45,3 @@ class NeuralNet():
         Loads parameters of the neural network from folder/filename
         """
         pass
-

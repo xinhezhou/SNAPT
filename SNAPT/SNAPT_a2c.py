@@ -13,27 +13,44 @@ import random
 
 def play_game(g, agent_1, agent_2, render = False, temp = 1):
     board, player = g.getInitBoard()
+    att_log_probs = []
+    att_values = []
+        
+    def_log_probs = []
+    def_values = []
+
+    entropy_term = 0
+
 
     while g.getGameEnded(board, player) == 0:
-        valids = g.getValidMoves(board, player)
+        # compute prob distribution
+        valids = g.getValidMoves(board, player) # valid positions
         if player == 1:
             vec = g.get_attack_vector(board)
-            probs, value = agent_1.forward(vec)
-            valids = valids[:g.size]
+            log_probs, value = agent_1.forward(vec)
         elif player == -1:
             vec = g.get_defend_vector(board)
-            probs, value = agent_2.forward(vec)
-            valids = valids[g.size:]
+            log_probs, value = agent_2.forward(vec)
         
-        if torch.is_tensor(probs):
-            probs = probs.detach().numpy()
-            
+        if player == 1:
+            att_values.append(value)
+            att_log_probs.append(log_probs)
+        elif player == -1:
+            def_values.append(value)
+            def_log_probs.append(log_probs)
+        
+        if torch.is_tensor(log_probs):
+            log_probs = log_probs.detach().numpy()
         if torch.is_tensor(value):
             value = value.detach().numpy()
+
+        probs = np.exp(log_probs)
+        entropy = -np.sum(np.mean(probs) * log_probs)
+        entropy_term += entropy
             
-        
+        # pick an action
         if temp != 0:
-            probs = np.power(probs, temp)
+            probs = np.power(log_probs, temp)
         probs = np.array(probs) * np.array(valids)
         probs = np.squeeze(probs)
         if sum(probs) == 0:
@@ -43,30 +60,44 @@ def play_game(g, agent_1, agent_2, render = False, temp = 1):
             action = np.argmax(probs)
         else:
             action = np.random.choice(len(probs), p = probs)
-        if player == -1:
-            action += g.size
         
         board, player = g.getNextState(board, player, action, render = render)
-        if render:
-            g.render(board, player)
-          
+        # if render:
+        #     g.render(board, player)
     
-    return g.getGameEnded(board, player)
+        r = g.getGameEnded(board, player)
+        if r != 0:
+            att_reward = r
+            def_reward = -1 * r
+            return att_values, def_values, att_log_probs, def_log_probs, att_reward, def_reward, entropy_term
         
+def update_params(optimizer,values,log_probs,reward, entropy):
+    values = torch.stack(values)
+    log_probs = torch.stack(log_probs)
+    rewards = np.zeros_like(values.detach().numpy()) + reward
+    rewards = torch.FloatTensor(rewards.astype(np.float32))
+
+    advantage = torch.abs((rewards - values).unsqueeze(-1))
+
+    actor_loss = (-1*log_probs * advantage).mean()
+    critic_loss = advantage.pow(2).mean()
+    loss = actor_loss + critic_loss + 0.0001 * entropy
+    loss.backward()
+    optimizer.step()
+    optimizer.zero_grad()
+    return loss
+
 
 
 def attacker_vs_defender(g, attacker, defender, episode_count, temp = 1):
     wins = 0
     for k in range(episode_count):
-        winner = play_game(g, attacker, defender, temp = temp)
+        winner = play_game(g, attacker, defender, temp = temp)[4]
         if winner == 1:
             wins += 1
             
     return wins
-    
-    
-    
-
+     
 
 def a2c(g, iters = 100, t_max = 3600, temp = 1):
     start =time.time()
@@ -83,109 +114,27 @@ def a2c(g, iters = 100, t_max = 3600, temp = 1):
     def_optimizer = optim.Adam(def_ac.parameters(), lr=learning_rate)
     att_ac.eval()
     def_ac.eval()
-    entropy_term = 0
+    att_losses = []
+    def_losses = []
     
     for i in range(iters):
         gc.collect()
-        att_log_probs = []
-        att_values = []
-        
-        def_log_probs = []
-        def_values = []
-        
-        players = []
+        att_values, def_values, att_log_probs, def_log_probs, att_reward, def_reward, entropy_term = play_game(g, att_ac, def_ac, render = False, temp = 1)
 
-        board, player = g.getInitBoard()
-        player = 1
-        attack_vec = g.get_attack_vector(board)
-
-        while True:
-            valids = g.getValidMoves(board, player)
-            if player == 1:
-                vec = g.get_attack_vector(board)
-                probs, value = att_ac(vec)
-                valids = valids[:g.size]
-                att_log_prob = torch.log(probs.squeeze())
-                att_log_probs.append(att_log_prob)
-                att_values.append(value.squeeze())
-                
-            elif player == -1:
-                vec = g.get_defend_vector(board)
-                probs, value = def_ac.forward(vec)
-                valids = valids[g.size:]
-                def_log_prob = torch.log(probs.squeeze())
-                def_log_probs.append(def_log_prob)
-                def_values.append(value)
-                
-            probs = np.squeeze(probs.detach().numpy())
-            entropy = -np.sum(np.mean(probs) * np.log(probs))
-            entropy_term += entropy
-            
-            probs = np.array(probs) * np.array(valids)
-            
-            
-            if temp == 0:
-                action = np.argmax(probs)
-                
-            else:
-                probs = np.power(probs, temp)
-                probs = probs/np.sum(probs)
-                action = np.random.choice(len(probs), p = probs)
-            
-            
-            board, player = g.getNextState(board, player, action)
-            
-            r = g.getGameEnded(board, player)
-            
-            if r != 0:
-                break
         
-        # compute Q values
-        att_Qvals = np.zeros_like(att_values)
-        att_Qvals += r
         
-        def_Qvals = np.zeros_like(def_values)
-        def_Qvals -= r
-            
         
         #update attack actor critic
         att_ac.train()
-        att_values = torch.stack(att_values)
-        att_Qvals = att_Qvals.astype(np.float32)
-        att_Qvals = torch.FloatTensor(att_Qvals)
-        att_log_probs = torch.stack(att_log_probs)
-        
-        att_advantage = att_Qvals - att_values
-        att_advantage = att_advantage.unsqueeze(-1)
-        att_actor_loss = (-att_log_probs * att_advantage).mean()
-        att_critic_loss = 0.5 * att_advantage.pow(2).mean()
-        att_loss = att_actor_loss + att_critic_loss + 0.0001 * entropy_term
-
-        att_loss.backward()
-
-        att_optimizer.step()
-        att_optimizer.zero_grad()
-
+        att_loss = update_params(att_optimizer, att_values, att_log_probs,att_reward, entropy_term)
+        att_losses.append(att_loss.detach().numpy())
         att_ac.eval()
         
         #update defense actor critic
         
         def_ac.train()
-        def_values = torch.stack(def_values)
-        def_Qvals = def_Qvals.astype(np.float32)
-        def_Qvals = torch.FloatTensor(def_Qvals)
-        def_log_probs = torch.stack(def_log_probs)
-        
-        def_advantage = def_Qvals - def_values
-        def_advantage = def_advantage.unsqueeze(-1)
-        def_actor_loss = (-def_log_probs * def_advantage).mean()
-        def_critic_loss = 0.5 * def_advantage.pow(2).mean()
-        def_loss = def_actor_loss + def_critic_loss + 0.0001 * entropy_term
-        
-        
-        def_optimizer.zero_grad()
-        def_loss.backward()
-        def_optimizer.step()
+        def_loss = update_params(def_optimizer, def_values, def_log_probs,def_reward, entropy_term)
+        def_losses.append(def_loss.detach().numpy())
         def_ac.eval()
         
         
@@ -198,6 +147,17 @@ def a2c(g, iters = 100, t_max = 3600, temp = 1):
             
             print('Finished iteration {}. {} seconds elapsed.'.format(i+1, np.round(current-start, 2)))
         
+    plt.figure(figsize=(15,10))
+    plt.ylabel("Loss")
+    plt.xlabel("Training Steps")
+    plt.plot(att_losses)
+    plt.savefig("attacker_losses.pdf", format="pdf")
+
+    plt.figure(figsize=(15,10))
+    plt.ylabel("Loss")
+    plt.xlabel("Training Steps")
+    plt.plot(def_losses)
+    plt.savefig("defender_losses.pdf", format="pdf")
         
     return att_ac, def_ac
 
