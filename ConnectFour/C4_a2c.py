@@ -74,6 +74,7 @@ def a2c(g, iters = 100, t_max = 3600):
     all_lengths = []
     average_lengths = []
     all_rewards = []
+    losses = []
     entropy_term = 0
     
     for i in range(iters):
@@ -126,6 +127,7 @@ def a2c(g, iters = 100, t_max = 3600):
         actor_loss = (-log_probs * advantage).mean()
         critic_loss = 0.5 * advantage.pow(2).mean()
         ac_loss = actor_loss + critic_loss + 0.001 * entropy_term
+        losses.append(ac_loss)
         
         #actor_critic.train()
         ac_optimizer.zero_grad()
@@ -143,5 +145,5 @@ def a2c(g, iters = 100, t_max = 3600):
             print(play_equal(g, player1 = actor_critic))
             print(ac_loss)
         
-        
+    
     return actor_critic

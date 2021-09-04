@@ -71,17 +71,18 @@ def play_game(g, agent_1, agent_2, render = False, temp = 1):
             def_reward = -1 * r
             return att_values, def_values, att_log_probs, def_log_probs, att_reward, def_reward, entropy_term
         
-def update_params(optimizer,values,log_probs,reward, entropy):
+def update_params(optimizer,values,log_probs,reward, entropy_term):
     values = torch.stack(values)
     log_probs = torch.stack(log_probs)
     rewards = np.zeros_like(values.detach().numpy()) + reward
     rewards = torch.FloatTensor(rewards.astype(np.float32))
+    advantage = (rewards - values).unsqueeze(-1)
+    # advantage = torch.abs((rewards - values).unsqueeze(-1))
 
-    advantage = torch.abs((rewards - values).unsqueeze(-1))
-
-    actor_loss = (-1*log_probs * advantage).mean()
+    actor_loss = (-log_probs * advantage).mean()
     critic_loss = advantage.pow(2).mean()
-    loss = actor_loss + critic_loss + 0.0001 * entropy
+    loss = actor_loss + critic_loss + 0.001* entropy_term
+    # print(actor_loss, critic_loss, entropy_term, loss)
     loss.backward()
     optimizer.step()
     optimizer.zero_grad()
