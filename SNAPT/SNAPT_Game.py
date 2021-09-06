@@ -38,7 +38,7 @@ class Machine():
     
     def attack(self):
         if np.random.random_sample() < self.atts[2]:
-            self.atts[0] = min(self.atts[0] + 1, 2)
+            self.atts[0] = min(self.atts[0] + 1, 2) # increase security state by 1
             self.atts[3] = 1
             return 1
         

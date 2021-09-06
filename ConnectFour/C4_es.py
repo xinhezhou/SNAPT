@@ -76,7 +76,7 @@ def get_win_count(g, mu, models, games_as_each = 50, temp = 0):
     return win_dict
 
 
-def cem_C4(g, iters = 100, batch_size = 20, elite_size = 10, episode_count = 10, weight_type = 'even', temp = 1, t_max = 3600, t_checks = 10):
+def cem(g, iters = 100, batch_size = 20, elite_size = 10, episode_count = 10, weight_type = 'even', temp = 1, t_max = 3600, t_checks = 10):
     mu = C4_net(g)
     sigma = C4_net(g)
     rewards = []
@@ -118,7 +118,7 @@ def cem_C4(g, iters = 100, batch_size = 20, elite_size = 10, episode_count = 10,
     return mu, rewards
 
 
-def oneone_C4(g, iters = 100, episode_count = 10, temp = 1, t_max = 3600, t_checks = 10):
+def oneone(g, iters = 100, episode_count = 10, temp = 1, t_max = 3600, t_checks = 10):
     mu = C4_net(g)
     sigma = C4_net(g)
     rewards = []
@@ -146,10 +146,3 @@ def oneone_C4(g, iters = 100, episode_count = 10, temp = 1, t_max = 3600, t_chec
             print(get_first_param(mu))
             print(get_first_param(sigma))
     return mu, rewards
-
-
-mu, r = oneone_C4(g, iters = 5000, episode_count = 50, temp = 1, t_max = 3600)
-
-import os
-fname= os.path.join('checkpoint', 'nnet_one_one_3600.pth.tar')
-torch.save(mu.state_dict(), fname)

@@ -1,3 +1,6 @@
+# much of the a2c code is taken from 
+# https://towardsdatascience.com/understanding-actor-critic-methods-931b97b6df3f
+
 import sys
 
 sys.path.append('../')
@@ -62,11 +65,10 @@ def play_equal(g, each = 50, player1 = 0, player2 = 0, temp = 0, render = False)
     return wins + each - play_games(g, total = each, player1 = player2, player2 = player1, temp = temp, render = render)
 
 
-def a2c_C4(g, iters = 100, t_max = 3600):
+def a2c(g, iters = 100, t_max = 3600):
     start =time.time()
     learning_rate = 0.001
     actor_critic = C4_net(g)
-    print(get_first_param(actor_critic))
     ac_optimizer = optim.Adam(actor_critic.parameters(), lr=learning_rate)
     actor_critic.eval()
     all_lengths = []
@@ -143,11 +145,3 @@ def a2c_C4(g, iters = 100, t_max = 3600):
         
         
     return actor_critic
-
-
-g = C4Game(height = 6, width = 7, win_length = 4)
-a2c = a2c_C4(g, iters = 200000, t_max = 3600)
-
-import os
-fname= os.path.join('checkpoint', 'nnet_a2c_3600.pth.tar')
-torch.save(a2c.state_dict(), fname)

@@ -27,7 +27,7 @@ class AlphaZero():
         total_moves = 0
         while True:
             canonicalBoard = self.g.getCanonicalForm(board, player)
-            temp = 1 if total_moves < self.args.tempThreshold else 0
+            temp = 1 
             pi = self.mcts.getActionProb(canonicalBoard, temp = temp)
             a = np.random.choice(len(pi), p = pi)
             trainExamples.append((board, player, pi))
@@ -48,7 +48,7 @@ class AlphaZero():
 
         return [(b, p, value) for (b,p) in zip(boards, pis)] 
     
-    def train(self):
+    def train_gradient(self):
         start = time.time()
         all_episodes = []
         for k in range(self.args.numEps):
@@ -74,49 +74,7 @@ class AlphaZero():
         total_loss.backward()
         optimizer.step()
         return time.time()-start
-        
-    def train_and_test(self):
-        times = []
-        print('Starting first iteration')
-        for k in range(self.args.numIters):
-            times.append(self.train())
-            if (k+1) % max(1, (self.args.numIters//20)) == 0:
-                print('Finished iteration {} of {}'.format(k+1, self.args.numIters))
-                print('Previous iteration took {} seconds. Average iteration time is {} seconds.'.format(np.round(times[-1], 2), np.round(np.mean(times), 2)))
-        
-        print('\n\n')
-        self.execute_episode(render = True)
-        
-    def train_session_grad(self, time_cap = 0):
-        times = []
-        start = time.time()
-        print('Starting first iteration')
-        for k in range(self.args.numIters):
-            times.append(self.train())
-            if (k+1) % max(1, (self.args.numIters//20)) == 0:
-                print('Finished iteration {} of {}'.format(k+1, self.args.numIters))
-                print('Previous iteration took {} seconds. Average iteration time is {} seconds.'.format(np.round(times[-1], 2), np.round(np.mean(times), 2)))
-                
-            if time.time() - start > time_cap and time_cap != 0:
-                break
-            gc.collect()
-        
-        print('Done in {} seconds.'.format(np.round(time.time() - start)))
-        
-    def train_session_es(self, time_cap = 0):
-        times = []
-        start = time.time()
-        print('Starting first iteration')
-        for k in range(self.args.numIters):
-            times.append(self.train_es())
-            if (k+1) % max(1, (self.args.numIters//20)) == 0:
-                print('Finished iteration {} of {}'.format(k+1, self.args.numIters))
-                print('Previous iteration took {} seconds. Average iteration time is {} seconds.'.format(np.round(times[-1], 2), np.round(np.mean(times), 2)))
-            if time.time() - start > time_cap and time_cap != 0:
-                break
-            gc.collect()
-        
-        print('Done in {} seconds.'.format(np.round(time.time() - start)))
+
         
         
     def weighted_sum(self, models, weights):
