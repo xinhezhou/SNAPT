@@ -45,10 +45,10 @@ class Machine():
         return 0
             
     def detect(self, detect_prob = 0.5):
-        if self.atts[3] == 0:
+        if self.atts[3] == 0 or self.atts[0] != 2:
             return 0
         if np.random.random_sample() < detect_prob:
-            self.atts[1] -= 1
+            self.atts[0] = max(0, self.atts[0] - 1) 
             return 1
         
         return 0
@@ -58,7 +58,7 @@ class Machine():
         
     def secure(self, factor = 0.1):
         if self.atts[4] < 3:
-            self.atts[2] -= factor
+            self.atts[2]  = max(0, self.atts[2] - factor)
             self.atts[4] += 1
             return 1
         
