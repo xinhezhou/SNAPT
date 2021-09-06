@@ -73,7 +73,8 @@ class AlphaZero():
         optimizer.zero_grad()
         total_loss.backward()
         optimizer.step()
-        return time.time()-start
+
+        return total_loss.detach(), time.time()-start
 
         
         
@@ -150,8 +151,6 @@ class AlphaZero():
         
         sample_models = [self.add_noise(self.nnet, std = self.sigma) for k in range(self.args.batch_size)]
         losses = [self.calculate_loss(model, target_pis, target_vs, boards) for model in sample_models]
-        
-
         weights = self.log_weights(self.args.elite_size)
         
         
@@ -162,4 +161,6 @@ class AlphaZero():
         self.nnet = self.weighted_sum(elites, weights)
         sigma = self.weighted_std(elites, weights, self.nnet, noise = 0.0001)
         
-        return time.time()-start
+        for i in range(len(losses)):
+            losses[i] = losses[i].detach()
+        return losses, time.time()-start

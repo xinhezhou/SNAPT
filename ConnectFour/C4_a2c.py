@@ -10,6 +10,7 @@ from es_utils import *
 import numpy as np
 import time
 import torch.optim as optim
+from matplotlib import pylab as plt
 import gc
 
 def play_game(g, player1 = 0, player2 = 0, render = False, temp = 0):
@@ -75,6 +76,7 @@ def a2c(g, iters = 100, t_max = 3600):
     average_lengths = []
     all_rewards = []
     entropy_term = 0
+    losses = []
     
     for i in range(iters):
         gc.collect()
@@ -125,7 +127,8 @@ def a2c(g, iters = 100, t_max = 3600):
         advantage = advantage.unsqueeze(-1)
         actor_loss = (-log_probs * advantage).mean()
         critic_loss = 0.5 * advantage.pow(2).mean()
-        ac_loss = actor_loss + critic_loss + 0.001 * entropy_term
+        ac_loss = actor_loss + critic_loss + 0.0001 * entropy_term
+        losses.append(ac_loss.detach())
         
         #actor_critic.train()
         ac_optimizer.zero_grad()
@@ -143,5 +146,10 @@ def a2c(g, iters = 100, t_max = 3600):
             print(play_equal(g, player1 = actor_critic))
             print(ac_loss)
         
-        
+    
+    plt.figure(figsize=(15,10))
+    plt.ylabel("Loss")
+    plt.xlabel("Training Steps")
+    plt.plot(losses)
+    plt.savefig("a2c_losses.pdf", format="pdf")
     return actor_critic
